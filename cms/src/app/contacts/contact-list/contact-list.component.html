@@ -1,0 +1,24 @@
+<hr>
+<div class="row">
+    <div class="col-xs-11">
+      <span class="pull-left"><h2 class="list-group-item-heading">Contacts</h2></span>
+      <span class="pull-right"><button class="btn btn-success">New Contact</button></span>
+    </div>
+</div>
+<hr>
+<a 
+      href="#" 
+      class="list-group-item clearfix"
+      *ngFor="let contact of contacts">
+        <div class="pull-left">
+          <h4 class="list-group-item-heading">{{ contact.name }}</h4>
+        </div>
+        <span class="pull-right">
+          <img 
+          [src]="contact.imageUrl"
+          alt="{{ contact.name }}" 
+          class="img-responsive" 
+          style="max-height: 50px;">
+        </span>
+      </a>
+<hr>
