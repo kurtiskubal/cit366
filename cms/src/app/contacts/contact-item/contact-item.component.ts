@@ -20,4 +20,4 @@ export class ContactItemComponent implements OnInit {
     this.contactSelected.emit();
   }
 
-} 
+}

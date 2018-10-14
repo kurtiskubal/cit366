@@ -10,6 +10,12 @@ export class DocumentListComponent implements OnInit {
 
   @Output() documentWasSelected = new EventEmitter<Document>();
 
+  documents: Document[] = [
+    new Document (12, 'Bob', 'This is Bobs document', 'bob.com', null),
+    new Document (12, 'Bob', 'This is Bobs document', 'bob.com', null),
+    new Document (12, 'Bob', 'This is Bobs document', 'bob.com', null),
+  ];
+  
   constructor() { }
 
   ngOnInit() {
@@ -19,5 +25,5 @@ export class DocumentListComponent implements OnInit {
   onDocumentSelected(document: Document) {
     this.documentWasSelected.emit(document);
   }
-
 }
+ 
