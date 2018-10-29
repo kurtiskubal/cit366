@@ -15,8 +15,8 @@
                 style="max-height: 70px;">
             </div>
             <div class="btn-toolbar pull-right">
-              <button class="btn btn-primary" type="button">Edit</button>
-              <button class="btn btn-danger" type="button">Delete</button>
+              <a [routerLink]="['edit']" type="button" class="btn btn-primary">Edit</a>
+              <a (click)="onDelete()" type="button" class="btn btn-danger">Delete</a>
             </div>
           </div>
         </div>
