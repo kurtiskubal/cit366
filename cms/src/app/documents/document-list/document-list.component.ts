@@ -26,10 +26,13 @@ export class DocumentListComponent implements OnInit {
           this.documents = documents;
         }
       );
+    console.log('Sub has start');
+
   }
 
   ngOnDestroy(){
     this.subscription.unsubscribe();
+    console.log('Sub has stopped');
   }
 
 
