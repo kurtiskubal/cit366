@@ -68,9 +68,7 @@
         </div>
       </div>
 
-      <div *ngIf="!f.valid && !f.untouched" class="alert alert-danger">
-        The Name and Email are required.
-      </div>
+      <div class="alert alert-danger" *ngIf="!name.valid && !name.untouched || !email.valid && !email.untouched">The Name and Email are required</div>
 
       <div class="form-group">
         <label for="groupList">Group contacts</label>
@@ -91,9 +89,6 @@
         </div>
 
       </div>
-
-
-    <div class="alert alert-danger" *ngIf="!name.valid && !f.untouched || !email.valid && !f.untouched">The Name and Email are required</div>
 
       <div class="row">
         <div class="col-xs-12 btn-toolbar">
