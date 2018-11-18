@@ -1,74 +1,108 @@
 import { Injectable, EventEmitter } from '@angular/core';
 import { Contact } from './contact.model';
-import { MOCKCONTACTS } from "./MOCKCONTACTS";
-import { Subject } from 'rxjs/Subject';
+import { MOCKCONTACTS } from './MOCKCONTACTS';
+import { Subject } from 'rxjs';
+import {HttpClient, HttpHeaders, HttpResponse} from "@angular/common/http";
+import 'rxjs';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable()
 export class ContactService {
-
-  contactSelected = new EventEmitter<Contact>();
+  contactSelectedEvent = new EventEmitter<Contact[]>();
+  contactChangedEvent = new EventEmitter<Contact[]>();
   contactListChangedEvent = new Subject<Contact[]>();
   contacts: Contact[] = [];
-  maxContact: number;
+  maxContactId: number;
 
-  constructor() {
+  constructor(private http: HttpClient) { 
     this.contacts = MOCKCONTACTS;
+    this.maxContactId = this.getMax();
   }
 
-  addContact(contact: Contact){
-    if(contact == null || contact == undefined){
-      return;
-    }
-
-    this.maxContact++;
-    contact.id = String(this.maxContact);
-    this.contacts.push(contact);
-    this.contactListChangedEvent.next(this.contacts.slice());
+  getContacts(): Contact[] {
+    this.http.get('https://cmskurtiskubal.firebaseio.com/contacts.json')
+        .subscribe(
+          (contacts: Contact[]) => {
+            this.contacts = contacts;
+            this.maxContactId = this.getMax();
+            this.contactListChangedEvent.next(this.contacts.slice())
+          });
+      (error: any) => {
+        console.log(error);
+      }
+      return this.contacts.slice();
   }
 
-  getContacts() {
-    return this.contacts.slice();
+  storeContacts(contacts: Contact[]) {
+    let stringToServer = JSON.stringify(this.contacts);
+    let header = new HttpHeaders({
+      "Content-Type":"application/json"
+    });
+    this.http.put('https://cmskurtiskubal.firebaseio.com/contacts.json', stringToServer,{headers:header})
+      .subscribe(result => {
+        this.contactListChangedEvent.next(Object.assign(this.contacts));
+      });
   }
 
-  getContact(id: String): Contact {
-    for (let contact of this.contacts) {
-      if (contact.id === id) {
-        console.log(contact.name);
-        return contact;
+  getContact(id: string): Contact {
+    for(let contact of this.contacts){
+      if(contact.id === id){
+        return contact
       }
     }
+    return null;
   }
-    
-  deleteContact(contact: Contact) {
-    if (contact === null) {
+
+  getMax(): number {
+    let maxId = 0;
+    for (let contact of this.contacts) {
+      let currentId = parseInt(contact.id, 10);
+      if (currentId > maxId) {
+        maxId = currentId;
+      }
+    }
+    return maxId;
+  }
+
+  deleteContact(contact: Contact){
+    if(contact === null){
       return;
     }
 
     const pos = this.contacts.indexOf(contact);
-    if (pos < 0) {
-      return;
-    }
-
+      if(pos < 0){
+        return;
+      }
     this.contacts.splice(pos, 1);
-    this.contactListChangedEvent.next(this.contacts.slice());
+    //this.contactListChangedEvent.next(this.contacts.slice());
+    this.storeContacts(this.contacts);
   }
 
-  updateContact(originalContact: Contact, updateContact: Contact) {
-    if(originalContact == null || originalContact == undefined ||
-      updateContact == null || updateContact == undefined){
+  addContact(newContact: Contact) {
+    if(!newContact){
       return;
     }
 
+    this.maxContactId++;
+    newContact.id = String(this.maxContactId);
+    this.contacts.push(newContact);
+    //this.contactListChangedEvent.next(this.contacts.slice());
+    this.storeContacts(this.contacts);
+  }
+
+  updateContact(originalContact: Contact, newContact: Contact) {
+    if(!originalContact || !newContact ){
+      return;
+    }
     const pos = this.contacts.indexOf(originalContact);
+
     if(pos < 0) {
       return;
     }
-    updateContact.id = originalContact.id;
-    this.contacts[pos] = updateContact;
-
-    this.contactListChangedEvent.next(this.contacts.slice());
+    newContact.id = originalContact.id;
+    this.contacts[pos] = newContact;
+    const contactsListClone = this.contacts.slice();
+    //this.contactListChangedEvent.next(contactsListClone);
+    this.storeContacts(this.contacts);    
   }
 
 }
