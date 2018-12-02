@@ -59,7 +59,7 @@ import { HttpClientModule } from '@angular/common/http';
     DndModule.forRoot(),
     HttpClientModule
   ],
-  providers: [ContactService, DocumentsService, MessagesService, WindRefService],
+  providers: [],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

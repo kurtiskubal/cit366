@@ -5,7 +5,9 @@ import { Subject } from "rxjs/Subject";
 import {HttpClient, HttpHeaders, HttpResponse} from "@angular/common/http";
 import 'rxjs';
 
-@Injectable()
+@Injectable({
+  providedIn: 'root'
+})
 export class DocumentsService {
 
   documentChangedEvent = new EventEmitter<Document[]>();
