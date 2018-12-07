@@ -1,108 +1,142 @@
-import { EventEmitter, Injectable } from '@angular/core';
+import { Injectable, EventEmitter } from '@angular/core';
+import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
+
 import { Document } from './document.model';
-import { MOCKDOCUMENTS } from './MOCKDOCUMENTS';
-import { Subject } from "rxjs/Subject";
-import {HttpClient, HttpHeaders, HttpResponse} from "@angular/common/http";
-import 'rxjs';
+import { Subject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DocumentsService {
-
-  documentChangedEvent = new EventEmitter<Document[]>();
-  documentListChangedEvent = new Subject<Document[]>();
-  documentSelected = new EventEmitter<Document>();
   documents: Document[] = [];
-  maxDocId: number;
+  documentSelectedEvent: EventEmitter<Document> = new EventEmitter<Document>();
+  documentChangedEvent: EventEmitter<Document[]> = new EventEmitter<Document[]>();
+  documentListChangedEvent: Subject<Document[]> = new Subject<Document[]>();
+  maxDocumentID: number;
 
   constructor(private http: HttpClient) {
-    //this.documents = MOCKDOCUMENTS;
-    this.maxDocId = this.getMaximum();
+    this.getDocuments();
   }
 
-  addDocument(document: Document) {
-    if (document === null || document === undefined) {
-      return
-    } 
-    this.maxDocId++ 
-    document.id = String(this.maxDocId);
-    this.documents.push(document);
-    //this.documentListChangedEvent.next(this.documents.slice());
-    this.storeDocuments(this.documents);
-}
-
-  storeDocuments(documents: Document[]) {
-    const headers = new HttpHeaders ({'Content-Type': 'application/json'});
-
-    this.http.put('https://cmskurtiskubal.firebaseio.com/documents.json', documents, {headers: headers})
-    .subscribe(
-      (response: Response) => {
-        this.documentListChangedEvent.next(documents.slice())
-      }
-    )
-  }
-
-  getDocuments(): Document[] {
-    this.http.get<Document[]>('https://cmskurtiskubal.firebaseio.com/documents.json')
-      .subscribe(
-        (documents: Document[]) => {
-          this.documents = documents;
-          this.maxDocId = this.getMaximum();
-          this.documents.sort((a,b) => (a.name > b.name ) ? 1 : ((b.name > a.name) ? -1 : 0));
-          this.documentListChangedEvent.next(this.documents.slice())
-        });
-      (error: any) => {
-        console.log(error);
-      }
-      return this.documents.slice();
+  getDocuments(): void {
+    this
+    .http
+    .get<{message: string, documents: Document[]}>('http://localhost:3000/documents')
+    .subscribe((response: any) => {
+      this.documents = response.documents;
+      this.maxDocumentID = this.getMaximum();
+      this.documents.sort(compareDocumentsByID);
+      this.documentListChangedEvent.next(this.documents.slice());
+    }, (err: any) => {
+      console.error(err);
+    });
   }
 
   getDocument(id: string): Document {
-    return this.documents.find( (document: Document) => document.id === id);
-  }
-
-  deleteDocument(document: Document) {
-    if (document === null) {
-      return;
+    if (!this.documents) {
+      return null;
     }
 
-    const pos = this.documents.indexOf(document);
-    if (pos < 0) {
-      return;
-    }
-
-    this.documents.splice(pos, 1);
-    //const documentsListClone = this.documents.slice();
-    //this.documentListChangedEvent.next(documentsListClone);
-    this.storeDocuments(this.documents);
-  }
-
-  getMaximum() {
-    let max = 0;
     for (let document of this.documents) {
-      const currentId = +document.id;
-      if (currentId > max) {
-        max = currentId;
+      if (document.id === id) {
+        return document;
       }
     }
-    return max;
+
+    return null;
   }
 
-  updateDocument(originalDocument: Document, updateDocument: Document){
-    if(originalDocument === null || updateDocument === undefined || updateDocument === null || originalDocument === undefined){
-      return
+  getMaximum(): number {
+    let maxID = 0;
+    for (let document of this.documents) {
+      let currentID = +document.id;
+      if (currentID > maxID) {
+        maxID = currentID;
+      }
     }
-    updateDocument.id = originalDocument.id;
-    const pos = this.documents.indexOf(originalDocument)
-    if(pos < 0){
-      return
-    }
-    this.documents[pos] = updateDocument;
-    const documentsListClone = this.documents.slice();
-    //this.documentListChangedEvent.next(documentsListClone);
-    this.storeDocuments(this.documents);
+
+    return maxID;
   }
 
+  addDocument(document: Document): void {
+    if (!document) {
+      return;
+    }
 
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+
+    document.id = '';
+
+    this.http
+    .post<{message: string, document: Document}>('http://localhost:3000/documents', document, {headers: headers})
+    .subscribe((response: any) => {
+      this.documents.push(response.document);
+      this.documents.sort(compareDocumentsByID);
+      this.documentChangedEvent.next(this.documents.slice());
+    });
+  }
+
+  updateDocument(originalDocument: Document, newDocument: Document): void {
+    if (!originalDocument || !newDocument) {
+      return;
+    }
+
+    let index = this.documents.indexOf(originalDocument);
+    if (index < 0) {
+      return;
+    }
+
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+
+    const strDocument = JSON.stringify(newDocument);
+
+    this.http
+    .put<{message: string}>(`http://localhost:3000/documents/${originalDocument.id}`, strDocument, {headers: headers})
+    .subscribe((response: any) => {
+      this.getDocuments();
+    });
+  }
+
+  deleteDocument(document: Document): void {
+    if (!document) {
+      return;
+    }
+
+    const index = this.documents.indexOf(document);
+    if (index < 0) {
+      return;
+    }
+
+    this.http.delete<{message: String}>(`http://localhost:3000/documents/${document.id}`)
+    .subscribe((response: any) => {
+      this.getDocuments();
+    })
+  }
+
+  storeDocuments(): void {
+    let json = JSON.stringify(this.documents);
+    let header = new HttpHeaders();
+    header.set('Content-Type', 'application/json');
+    this
+    .http
+    .put<{message: string}>('http://localhost:3000/documents', json, {
+      headers: header
+    }).subscribe(() => {
+      this.documentChangedEvent.next(this.documents.slice());
+    });
+  }
+}
+
+function compareDocumentsByID(lhs: Document, rhs: Document): number {
+  if (lhs.id < rhs.id) {
+    return -1;
+  } else if (lhs.id === rhs.id) {
+    return 0;
+  } else {
+    return 1;
+  }
 }

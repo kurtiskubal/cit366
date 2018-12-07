@@ -3,21 +3,19 @@ import { Document } from './document.model';
 import { DocumentsService } from './documents.service';
 
 @Component({
-  selector: 'app-documents',
+  selector: 'cms-documents',
   templateUrl: './documents.component.html',
-  styleUrls: ['./documents.component.css'],
-  providers: [DocumentsService]
+  styleUrls: ['./documents.component.css']
 })
 export class DocumentsComponent implements OnInit {
-
   selectedDocument: Document;
 
   constructor(private documentService: DocumentsService) { }
 
   ngOnInit() {
-    this.documentService.documentSelected.subscribe(
-      (document: Document) => this.selectedDocument = document
-    );
+    this.documentService.documentSelectedEvent.subscribe((document) => {
+      this.selectedDocument = document;
+    });
   }
 
 }
