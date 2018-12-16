@@ -8,12 +8,19 @@ import { Message } from '@angular/compiler/src/i18n/i18n_ast';
   styleUrls: ['./messages.component.css'],
   providers: [MessagesService]
 })
-export class MessagesComponent {
+export class MessagesComponent implements OnInit {
 
   selectedMessage: Message;
 
   constructor(private messService: MessagesService) { }
 
-  
+  ngOnInit() {
+    this.messService.messageSelected
+    .subscribe(
+      (message: Message) => {
+        this.selectedMessage = message;
+      }
+    )
+  }
 
 }

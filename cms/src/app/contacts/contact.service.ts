@@ -1,142 +1,110 @@
 import { Injectable, EventEmitter } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
-
 import { Contact } from './contact.model';
+import { MOCKCONTACTS } from './MOCKCONTACTS';
 import { Subject } from 'rxjs';
+import {HttpClient, HttpHeaders, HttpResponse} from "@angular/common/http";
+import 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ContactService {
+  contactSelectedEvent = new EventEmitter<Contact[]>();
+  contactChangedEvent = new EventEmitter<Contact[]>();
+  contactListChangedEvent = new Subject<Contact[]>();
   contacts: Contact[] = [];
-  contactSelectedEvent: EventEmitter<Contact> = new EventEmitter<Contact>();
-  contactChangedEvent: EventEmitter<Contact[]> = new EventEmitter<Contact[]>();
-  contactListChangedEvent: Subject<Contact[]> = new Subject<Contact[]>();
-  maxContactID: number;
+  maxContactId: number;
 
   constructor(private http: HttpClient) { 
-    this.getContacts();
+    this.contacts = MOCKCONTACTS;
+    this.maxContactId = this.getMax();
   }
 
-  getContacts(): void {
-    this
-    .http
-    .get<{message: string, contacts: Contact[]}>('http://localhost:3000/contacts')
-    .subscribe((response: any) => {
-      this.contacts = response.contacts;
-      this.maxContactID = this.getMaximum();
-      this.contacts.sort(compareContactsByID);
-      this.contactListChangedEvent.next(this.contacts.slice());
-    }, (err: any) => {
-      console.error(err);
+  getContacts(): Contact[] {
+    this.http.get('https://cmskurtiskubal.firebaseio.com/contacts.json')
+        .subscribe(
+          (contacts: Contact[]) => {
+            this.contacts = contacts;
+            this.maxContactId = this.getMax();
+            this.contactListChangedEvent.next(this.contacts.slice())
+          });
+      (error: any) => {
+        console.log(error);
+      }
+      return this.contacts.slice();
+  }
+
+  storeContacts(contacts: Contact[]) {
+    let stringToServer = JSON.stringify(this.contacts);
+    let header = new HttpHeaders({
+      "Content-Type":"application/json"
     });
+    this.http.put('https://cmskurtiskubal.firebaseio.com/contacts.json', stringToServer,{headers:header})
+      .subscribe(result => {
+        this.contactListChangedEvent.next(Object.assign(this.contacts));
+      });
   }
 
   getContact(id: string): Contact {
-    if (!this.contacts) {
-      return null;
-    }
-
-    for (let contact of this.contacts) {
-      if (contact.id === id) {
-        return contact;
+    for(let contact of this.contacts){
+      if(contact.id === id){
+        return contact
       }
     }
-
     return null;
   }
 
-  getMaximum(): number {
-    let maxID = 0;
+  getMax(): number {
+    let maxId = 0;
     for (let contact of this.contacts) {
-      let currentID = +contact.id;
-      if (currentID > maxID) {
-        maxID = currentID;
+      let currentId = parseInt(contact.id, 10);
+      if (currentId > maxId) {
+        maxId = currentId;
       }
     }
-
-    return maxID;
+    return maxId;
   }
 
-  addContact(contact: Contact): void {
-    if (!contact) {
+  deleteContact(contact: Contact){
+    if(contact === null){
       return;
     }
 
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json'
-    });
-
-    contact.id = '';
-
-    this.http
-    .post<{message: string, contact: Contact}>('http://localhost:3000/contacts', contact, {headers: headers})
-    .subscribe((response: any) => {
-      this.contacts.push(response.contact);
-      this.contacts.sort(compareContactsByID);
-      this.contactChangedEvent.next(this.contacts.slice());
-    });
+    const pos = this.contacts.indexOf(contact);
+      if(pos < 0){
+        return;
+      }
+    this.contacts.splice(pos, 1);
+    //this.contactListChangedEvent.next(this.contacts.slice());
+    this.storeContacts(this.contacts);
   }
 
-  updateContact(originalContact: Contact, newContact: Contact): void {
-    if (!originalContact || !newContact) {
+  addContact(newContact: Contact) {
+    if(!newContact){
       return;
     }
 
-    let index = this.contacts.indexOf(originalContact);
-    if (index < 0) {
+    this.maxContactId++;
+    newContact.id = String(this.maxContactId);
+    this.contacts.push(newContact);
+    //this.contactListChangedEvent.next(this.contacts.slice());
+    this.storeContacts(this.contacts);
+  }
+
+  updateContact(originalContact: Contact, newContact: Contact) {
+    if(!originalContact || !newContact ){
       return;
     }
+    const pos = this.contacts.indexOf(originalContact);
 
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json'
-    });
-
-    const strContact = JSON.stringify(newContact);
-
-    this.http
-    .put<{message: string}>(`http://localhost:3000/contacts/${originalContact.id}`, strContact, {headers: headers})
-    .subscribe((response: any) => {
-      this.getContacts();
-    });
-  }
-
-  deleteContact(contact: Contact): void {
-    if (!contact) {
+    if(pos < 0) {
       return;
     }
-
-    const index = this.contacts.indexOf(contact);
-    if (index < 0) {
-      return;
-    }
-
-    this.http.delete(`http://localhost:3000/contacts/${contact.id}`)
-    .subscribe((contacts: Contact[]) => {
-      this.getContacts();
-    })
+    newContact.id = originalContact.id;
+    this.contacts[pos] = newContact;
+    const contactsListClone = this.contacts.slice();
+    //this.contactListChangedEvent.next(contactsListClone);
+    this.storeContacts(this.contacts);    
   }
 
-  storeContacts(): void {
-    let json = JSON.stringify(this.contacts);
-    let header = new HttpHeaders();
-    header.set('Content-Type', 'application/json');
-    this
-    .http
-    .put<{message: string}>('http://localhost:3000/contacts', json, {
-      headers: header
-    }).subscribe(() => {
-      this.contactListChangedEvent.next(this.contacts.slice());
-    });
-  }
-}
-
-function compareContactsByID(lhs: Contact, rhs: Contact): number {
-  if (lhs.id < rhs.id) {
-    return -1;
-  } else if (lhs.id === rhs.id) {
-    return 0;
-  } else {
-    return 1;
-  }
 }
